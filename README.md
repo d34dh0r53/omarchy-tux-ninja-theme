@@ -23,23 +23,50 @@ omarchy theme set tux-ninja
 - `backgrounds/1-tux-ninja.jpg` — 4K wallpaper
 - `icons.theme` — Yaru purple-dark icon set
 - `preview.png` — theme preview thumbnail
-- `kitty/` — optional neon glow extras for kitty (see below)
+- `kitty/tux-ninja.conf` — kitty color theme, apply with
+  `kitten themes tux-ninja` (copy to `~/.config/kitty/themes/`)
+- `kitty/shaders/` — optional neon text-glow shader for kitty (see below)
 
 ## Neon glow
 
-Kitty gets a magenta glow around the active window border and the OS window
-edges via a custom slang shader (kitty ≥ 0.49). Omarchy regenerates kitty's
-config from `colors.toml` when applying a theme, so enable it once by hand:
+Kitty gets a neon text-glow via a custom slang shader (requires kitty ≥ 0.49
+and the `shader-slang` package for the `slangc` compiler):
 
 ```bash
+sudo pacman -S --noconfirm shader-slang
 mkdir -p ~/.config/kitty/shaders
 cp -r ~/.config/omarchy/themes/tux-ninja/kitty/shaders/* ~/.config/kitty/shaders/
-echo 'custom_shaders tux-glow' >> ~/.config/kitty/kitty.conf
+printf '\ncustom_shaders tux-glow\n' >> ~/.config/kitty/kitty.conf
 ```
 
-Then restart kitty (or `omarchy restart terminal`). Tune the look by editing
-the `GLOW_*` constants at the top of `~/.config/kitty/shaders/tux-glow.slang`
-(width, strength, and color).
+Then restart kitty. The shader matches pixels against the theme's named
+palette colors (the same names/hexes as starship.toml and colors.toml) and
+gives each color its own glow. Colors currently glowing: red, cyan, the
+magenta accents (fastfetch omarchy logo, starship prompt), and a faint halo
+on bright text.
+
+Each color's glow is configured in `glow-colors.toml` — one section per
+palette color with `hex`, `strength` (0 = off) and `radius`:
+
+```toml
+[colors.accent]
+hex = "#BC50A0"
+strength = 0.35
+radius = 2.2
+```
+
+After editing it, regenerate and reload:
+
+```bash
+python3 ~/.config/kitty/shaders/generate-glow.py
+```
+
+Fine-tuning strengths/radii without regenerating is also possible directly in
+`~/.config/kitty/shaders/tux-glow.pipeline` (the generator bakes the TOML
+values there as `var` overrides). `[settings] tolerance` in the TOML
+controls how close a pixel must be to a named color to count as it. The
+effect is static (`animation_step 0`), so it only redraws when terminal
+content changes — no idle CPU cost.
 
 To glow the outside of every window on the desktop, add a magenta Hyprland
 shadow with zero offset to `~/.config/hypr/` (e.g. in `looknfeel.lua`):

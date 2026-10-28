@@ -1,4 +1,34 @@
+# Tux Ninja — neon text glow pipeline. GENERATED from glow-colors.toml.
+# Strengths and radii can be tuned here without regenerating the shader.
+
 startgroup
+    # static effect: redraws only when content changes, no idle cost
     animation_step 0
+    var float CATCHALL_STRENGTH = 0.0700
+    var float CATCHALL_RADIUS = 1.0000
+    var float STRENGTH_RED = 0.0200
+    var float RADIUS_RED = 1.0000
+    var float STRENGTH_BRIGHT_RED = 0.0200
+    var float RADIUS_BRIGHT_RED = 1.0000
+    var float STRENGTH_GREEN = 0.0200
+    var float RADIUS_GREEN = 1.0000
+    var float STRENGTH_YELLOW = 0.0200
+    var float RADIUS_YELLOW = 1.0000
+    var float STRENGTH_ORANGE = 0.0200
+    var float RADIUS_ORANGE = 1.0000
+    var float STRENGTH_ACCENT = 0.0200
+    var float RADIUS_ACCENT = 2.2000
+    var float STRENGTH_BRIGHT_MAGENTA = 0.0200
+    var float RADIUS_BRIGHT_MAGENTA = 2.2000
+    var float STRENGTH_PURPLE = 0.0200
+    var float RADIUS_PURPLE = 1.0000
+    var float STRENGTH_CYAN = 0.0200
+    var float RADIUS_CYAN = 1.0000
+    var float STRENGTH_BRIGHT_BLUE = 0.0200
+    var float RADIUS_BRIGHT_BLUE = 1.2000
+    var float STRENGTH_BRIGHT_FOREGROUND = 0.0200
+    var float RADIUS_BRIGHT_FOREGROUND = 1.2000
+    var float STRENGTH_MUTED = 0.0200
+    var float RADIUS_MUTED = 1.0000
     shaders tux-glow
 endgroup

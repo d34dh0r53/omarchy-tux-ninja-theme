@@ -1,0 +1,103 @@
+# Tux Ninja — per-color neon glow configuration for Kitty.
+#
+# Each entry is an Omarchy palette color (names match the [palettes.omarchy]
+# section of starship.toml / colors.toml). Edit strength/radius and re-run
+# generate-glow.py to rebuild the shader.
+#
+#   strength — glow intensity (0 disables the color entirely)
+#   radius   — glow spread, in bloom steps (bigger = wider, softer halo)
+#
+# The special entry [settings] controls color-matching tolerance: how far a
+# pixel may be from a named color (after accounting for antialiasing blends
+# with the background) and still count as that color. Larger = more forgiving.
+
+[settings]
+tolerance = 0.10
+
+# catch-all glow for pixels that don't match any palette color but are
+# clearly distinct from the background (e.g. dircolors / LS_COLORS hues).
+# They glow faintly in their own color.
+catchall_strength = 0.07
+catchall_radius = 1.0
+
+# --- Status colors ---
+[colors.red]
+hex = "#C95D93"
+strength = 0.02
+radius = 1.0
+
+[colors.bright_red]
+hex = "#E58CB8"
+strength = 0.02
+radius = 1.0
+
+[colors.green]
+hex = "#915582"
+strength = 0.02
+radius = 1.0
+
+[colors.yellow]
+hex = "#9182C7"
+strength = 0.02
+radius = 1.0
+
+[colors.orange]
+hex = "#A86FA8"
+strength = 0.02
+radius = 1.0
+
+# --- Accents ---
+[colors.accent]
+hex = "#BC50A0"
+strength = 0.02
+radius = 2.2
+
+[colors.bright_magenta]
+hex = "#E06FB6"
+strength = 0.02
+radius = 2.2
+
+[colors.purple]
+hex = "#A42F61"
+strength = 0.02
+radius = 1.0
+
+[colors.cyan]
+hex = "#485D92"
+strength = 0.02
+radius = 1.0
+
+[colors.bright_blue]
+hex = "#C7D2E8"
+strength = 0.02
+radius = 1.2
+
+# --- Foregrounds ---
+[colors.bright_foreground]
+hex = "#E4E9F8"
+strength = 0.02
+radius = 1.2
+
+[colors.muted]
+hex = "#6E7597"
+strength = 0.02
+radius = 1.0
+
+# --- dircolors (fd / LS_COLORS xterm-256 cube hues) ---
+# fd renders these outside the palette; the catchall gives them a faint glow
+# but green-on-navy reads dim, so it gets an explicit boost here.
+
+[colors.dircolors_green]
+hex = "#AFD75F" # xterm 149 — .toml/.conf files
+strength = 0.12
+radius = 1.0
+
+[colors.dircolors_blue]
+hex = "#5FD7FF" # xterm 81 — directories
+strength = 0.0
+radius = 1.0
+
+[colors.dircolors_orange]
+hex = "#FF8700" # xterm 208 — images
+strength = 0.0
+radius = 1.0
