@@ -17,6 +17,7 @@ const float GLOW_STRENGTH = 0.0800;
 const float GLOW_RADIUS = 2.0000;
 const float WHITE_SUPPRESSION = 0.8500;
 const float CHROMA_GAIN = 4.0000;
+const float TEXT_BOOST = 4.0000;
 
 // A tap counts as pure background below PRESENT_NEAR and as full content
 // above PRESENT_FAR (perceptual distance, sRGB space, luma weighted).
@@ -25,6 +26,14 @@ const float PRESENT_FAR = 0.2500;
 
 // Rec.709 luma weights
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+
+// Tap reach compensation: Ghostty renders into its own scaled render
+// target (content scale), which the compositor then resizes to the window.
+// The tap offsets are in render-target pixels, so on setups where the
+// render target is finer than the screen (GTK fractional scaling on a 4K
+// TV: 2.18 vs 1.6) the halo comes out ~1.36x narrower than Kitty's.
+// Raise toward that ratio to match; 1.0 = no compensation.
+const float TAP_SCALE = 1.36;
 
 // Golden spiral sample pattern [x, y, weight] — weight is inverse of distance
 const vec3 SAMPLES[24] = vec3[24](
@@ -76,11 +85,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 res = iResolution.xy;
     vec2 uv = fragCoord / res;
 
-    // One pixel in texture UV space
-    vec2 base = 1.414 / res;
+    // One screen pixel in texture UV space, TAP_SCALE-compensated
+    vec2 base = (1.414 * TAP_SCALE) / res;
     vec3 bg = iBackgroundColor;
 
-    vec4 result = texture(iChannel0, uv);
+    vec4 center = texture(iChannel0, uv);
+    vec3 glow = vec3(0.0);
+    float glow_a = 0.0;
+    float density = 0.0;  // how much of the neighborhood is content
 
     for (int i = 0; i < 24; i++) {
         vec3 s = SAMPLES[i];
@@ -91,6 +103,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
         // background taps contribute nothing
         float present = present_amount(sc.rgb, bg);
+        density += present * s.z;
         if (present <= 0.0) { continue; }
 
         // white/pink protection: unsaturated pixels glow only faintly
@@ -100,8 +113,23 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         // radial falloff from the center pixel
         float w = 1.0 / (1.0 + 2.0 * dist2 / (GLOW_RADIUS * GLOW_RADIUS));
 
-        result += sc * (GLOW_STRENGTH * s.z * amount * w);
+        float k = GLOW_STRENGTH * s.z * amount * w;
+        // composite in linear space like Kitty does: square the sRGB samples
+        // (gamma-2 approx), accumulate, re-encode at the end. Adding in linear
+        // and then encoding lands the glow much harder in the darks — that is
+        // where the halo lives, and what makes the Kitty version pop.
+        glow += (sc.rgb * sc.rgb) * k;
+        glow_a += sc.a * k;
     }
 
-    fragColor = result;
+    vec3 lin = center.rgb * center.rgb;
+    // bright, saturated, DENSE content self-boosts: the gather-gated
+    // core punch Kitty gets for free from its linear composite. Solid
+    // blocks collect from all taps, thin glyph strokes only from a few —
+    // so neon blocks punch hard while thin white text stays crisp.
+    float sat_c = saturation_amount(center.rgb);
+    float gather = density / 8.4386;  // sum of the spiral weights
+    lin *= 1.0 + TEXT_BOOST * sat_c * sat_c * sat_c * gather;
+    lin += glow;
+    fragColor = vec4(sqrt(lin), center.a + glow_a);
 }

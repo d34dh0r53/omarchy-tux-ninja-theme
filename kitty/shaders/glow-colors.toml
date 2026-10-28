@@ -27,3 +27,9 @@ white_suppression = 0.85
 # most saturated colors reach full strength. White sits near 0, the bluish
 # palette mid-tones mid, magenta/red accents at 1.
 chroma_gain = 4.0
+
+# Self-brightening of neon text cores (Ghostty only — Kitty's linear
+# composite does this implicitly). Gated by saturation³ and neighborhood
+# density: solid saturated blocks punch toward blown-out neon while thin
+# white text stays crisp. 0 = off, ~4 matches Kitty's look.
+text_boost = 4.0
