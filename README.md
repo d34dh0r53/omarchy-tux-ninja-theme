@@ -39,20 +39,21 @@ cp -r ~/.config/omarchy/themes/tux-ninja/kitty/shaders/* ~/.config/kitty/shaders
 printf '\ncustom_shaders tux-glow\n' >> ~/.config/kitty/kitty.conf
 ```
 
-Then restart kitty. The shader matches pixels against the theme's named
-palette colors (the same names/hexes as starship.toml and colors.toml) and
-gives each color its own glow. Colors currently glowing: red, cyan, the
-magenta accents (fastfetch omarchy logo, starship prompt), and a faint halo
-on bright text.
+Then restart kitty. The shader applies one color-agnostic glow: any pixel
+perceptually distinct from the background glows in its own color, scaled by
+its saturation — saturated accents bloom while white and pink text keep only
+a faint halo. Distance and saturation are measured in gamma-2 (sqrt) space
+with luma weighting, which is perceptually even across hues and cheap
+enough for integrated GPUs at 4K.
 
-Each color's glow is configured in `glow-colors.toml` — one section per
-palette color with `hex`, `strength` (0 = off) and `radius`:
+The glow is configured in `glow-colors.toml`:
 
 ```toml
-[colors.accent]
-hex = "#BC50A0"
-strength = 0.35
-radius = 2.2
+[settings]
+strength = 0.08          # overall glow intensity
+radius = 2.0             # halo spread, ~1 tight … ~2.2 wide soft neon
+white_suppression = 0.85 # 0 = whites glow equally, 1 = whites never glow
+chroma_gain = 4.0        # how fast saturation earns the full glow
 ```
 
 After editing it, regenerate and reload:
@@ -61,12 +62,10 @@ After editing it, regenerate and reload:
 python3 ~/.config/kitty/shaders/generate-glow.py
 ```
 
-Fine-tuning strengths/radii without regenerating is also possible directly in
+Fine-tuning without regenerating is also possible directly in
 `~/.config/kitty/shaders/tux-glow.pipeline` (the generator bakes the TOML
-values there as `var` overrides). `[settings] tolerance` in the TOML
-controls how close a pixel must be to a named color to count as it. The
-effect is static (`animation_step 0`), so it only redraws when terminal
-content changes — no idle CPU cost.
+values there as `var` overrides). The effect is static (`animation_step 0`),
+so it only redraws when terminal content changes — no idle CPU cost.
 
 To glow the outside of every window on the desktop, add a magenta Hyprland
 shadow with zero offset to `~/.config/hypr/` (e.g. in `looknfeel.lua`):
@@ -79,7 +78,7 @@ hl.config({
       range = 20,
       render_power = 4,
       color = "rgba(bc50a05c)",
-      offset = "0x0",
+      offset = "0 0",
     },
   },
 })
