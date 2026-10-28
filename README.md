@@ -67,6 +67,25 @@ Fine-tuning without regenerating is also possible directly in
 values there as `var` overrides). The effect is static (`animation_step 0`),
 so it only redraws when terminal content changes — no idle CPU cost.
 
+### Ghostty
+
+The same glow is available for Ghostty — the generator emits
+`tux-glow.glsl` from the same `glow-colors.toml` (the `kitty/shaders/`
+directory holds the shared generator and every backend's output):
+
+```bash
+mkdir -p ~/.config/ghostty/shaders
+cp ~/.config/omarchy/themes/tux-ninja/kitty/shaders/tux-glow.glsl ~/.config/ghostty/shaders/
+printf '\ncustom-shader = ~/.config/ghostty/shaders/tux-glow.glsl\ncustom-shader-animation = false\n' >> ~/.config/ghostty/config
+```
+
+Reload with `omarchy restart terminal` (or restart Ghostty). Ghostty
+serves the terminal texture in display (sRGB) space, which is already
+gamma-2-ish, so the port needs no sqrt transform and runs a little cheaper
+than the Kitty one. Ghostty has no pipeline vars — tune the constants at
+the top of the `tux-glow.glsl` directly, or edit `glow-colors.toml` and
+regenerate with `python3 generate-glow.py`.
+
 To glow the outside of every window on the desktop, add a magenta Hyprland
 shadow with zero offset to `~/.config/hypr/` (e.g. in `looknfeel.lua`):
 

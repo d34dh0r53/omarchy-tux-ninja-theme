@@ -1,4 +1,4 @@
-# Tux Ninja — neon glow configuration for Kitty.
+# Tux Ninja — neon glow configuration for Kitty and Ghostty.
 #
 # One color-agnostic glow: any pixel that is perceptually distinct from the
 # background glows in its own color, scaled by how saturated it is. Saturated
@@ -7,7 +7,9 @@
 #
 # Edit and re-run:  python3 generate-glow.py
 # (strength, radius, white_suppression and chroma_gain can also be tuned
-# directly in tux-glow.pipeline without regenerating — restart kitty after.)
+# directly in tux-glow.pipeline — Kitty only — without regenerating;
+# restart the terminal after. Ghostty has no pipeline vars: tune the
+# constants in tux-glow.glsl, or regenerate.)
 
 [settings]
 # Overall glow intensity.

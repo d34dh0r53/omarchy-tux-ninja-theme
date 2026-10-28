@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Generate tux-glow.slang and tux-glow.pipeline from glow-colors.toml.
+"""Generate tux-glow.slang, tux-glow.pipeline and tux-glow.glsl from glow-colors.toml.
 
 Usage: edit glow-colors.toml, then run:
     python3 generate-glow.py [--output-dir DIR]
 
-Writes tux-glow.slang and tux-glow.pipeline next to this script (or into
---output-dir). Copy both to ~/.config/kitty/shaders/ and restart kitty.
+Writes tux-glow.slang and tux-glow.pipeline (Kitty) and tux-glow.glsl
+(Ghostty) next to this script (or into --output-dir). Copy the Kitty pair
+to ~/.config/kitty/shaders/ and the Ghostty shader to
+~/.config/ghostty/shaders/, then restart the terminal.
 """
 
 import argparse
@@ -13,6 +15,57 @@ import pathlib
 import tomllib
 
 HERE = pathlib.Path(__file__).resolve().parent
+
+# Golden spiral sample pattern (x, y, weight) — weight is inverse of distance
+SPIRAL = [
+    ("0.1693761725038636", "0.9855514761735895", "1.0"),
+    ("-1.333070830962943", "0.4721463328627773", "0.7071067811865475"),
+    ("-0.8464394909806497", "-1.51113870578065", "0.5773502691896258"),
+    ("1.554155680728463", "-1.2588090085709776", "0.5"),
+    ("1.681364377589461", "1.4741145918052656", "0.4472135954999579"),
+    ("-1.2795157692199817", "2.088741103228784", "0.4082482904638631"),
+    ("-2.4575847530631187", "-0.9799373355024756", "0.3779644730092272"),
+    ("0.5874641440208847", "-2.7667464429345077", "0.35355339059327373"),
+    ("2.997715703369726", "0.11704939884745152", "0.3333333333333333"),
+    ("0.41360842451688395", "3.1351121305574803", "0.31622776601683794"),
+    ("-3.167149933769243", "0.9844599011770256", "0.30151134457776363"),
+    ("-1.5736713846521535", "-3.0860263079123245", "0.2886751345948129"),
+    ("2.888202648340422", "-2.1583061557896213", "0.2773500981126146"),
+    ("2.7150778983300325", "2.5745586041105715", "0.2672612419124244"),
+    ("-2.1504069972377464", "3.2211410627650165", "0.2581988897471611"),
+    ("-3.6548858794907493", "-1.6253643308191343", "0.25"),
+    ("1.0130775986052671", "-3.9967078676335834", "0.24253562503633297"),
+    ("4.229723673607257", "0.33081361055181563", "0.23570226039551587"),
+    ("0.40107790291173834", "4.340407413572593", "0.22941573387056174"),
+    ("-4.319124570236028", "1.1598115996934382", "0.22360679774997896"),
+    ("-1.9209044802827355", "-4.160543952132907", "0.2182178902359924"),
+    ("3.8639122286635708", "-2.6589814382925123", "0.21320071635561041"),
+    ("3.3486228404946234", "3.4331800232609", "0.20851441405707477"),
+    ("-2.8769733643574344", "3.9652268864187157", "0.20412414523193154"),
+]
+
+
+def samples_slang() -> str:
+    lines = []
+    for i, (x, y, w) in enumerate(SPIRAL):
+        comma = "," if i < len(SPIRAL) - 1 else ""
+        lines.append(f"    float3({x}, {y}, {w}){comma}")
+    return (
+        "\n// Golden spiral sample pattern [x, y, weight] — weight is inverse of distance\n"
+        "static const float3 samples[24] = {\n" + "\n".join(lines) + "\n};\n"
+    )
+
+
+def samples_glsl() -> str:
+    lines = []
+    for i, (x, y, w) in enumerate(SPIRAL):
+        comma = "," if i < len(SPIRAL) - 1 else ""
+        lines.append(f"    vec3({x}, {y}, {w}){comma}")
+    return (
+        "\n// Golden spiral sample pattern [x, y, weight] — weight is inverse of distance\n"
+        "const vec3 SAMPLES[24] = vec3[24](\n" + "\n".join(lines) + "\n);\n"
+    )
+
 
 HEADER = """\
 #language slang 2026
@@ -40,36 +93,6 @@ static const float PRESENT_FAR = 0.2500f;
 
 // Rec.709 luma weights
 static const float3 LUMA = float3(0.2126f, 0.7152f, 0.0722f);
-"""
-
-SAMPLES = """
-// Golden spiral sample pattern [x, y, weight] — weight is inverse of distance
-static const float3 samples[24] = {
-    float3(0.1693761725038636, 0.9855514761735895, 1.0),
-    float3(-1.333070830962943, 0.4721463328627773, 0.7071067811865475),
-    float3(-0.8464394909806497, -1.51113870578065, 0.5773502691896258),
-    float3(1.554155680728463, -1.2588090085709776, 0.5),
-    float3(1.681364377589461, 1.4741145918052656, 0.4472135954999579),
-    float3(-1.2795157692199817, 2.088741103228784, 0.4082482904638631),
-    float3(-2.4575847530631187, -0.9799373355024756, 0.3779644730092272),
-    float3(0.5874641440208847, -2.7667464429345077, 0.35355339059327373),
-    float3(2.997715703369726, 0.11704939884745152, 0.3333333333333333),
-    float3(0.41360842451688395, 3.1351121305574803, 0.31622776601683794),
-    float3(-3.167149933769243, 0.9844599011770256, 0.30151134457776363),
-    float3(-1.5736713846521535, -3.0860263079123245, 0.2886751345948129),
-    float3(2.888202648340422, -2.1583061557896213, 0.2773500981126146),
-    float3(2.7150778983300325, 2.5745586041105715, 0.2672612419124244),
-    float3(-2.1504069972377464, 3.2211410627650165, 0.2581988897471611),
-    float3(-3.6548858794907493, -1.6253643308191343, 0.25),
-    float3(1.0130775986052671, -3.9967078676335834, 0.24253562503633297),
-    float3(4.229723673607257, 0.33081361055181563, 0.23570226039551587),
-    float3(0.40107790291173834, 4.340407413572593, 0.22941573387056174),
-    float3(-4.319124570236028, 1.1598115996934382, 0.22360679774997896),
-    float3(-1.9209044802827355, -4.160543952132907, 0.2182178902359924),
-    float3(3.8639122286635708, -2.6589814382925123, 0.21320071635561041),
-    float3(3.3486228404946234, 3.4331800232609, 0.20851441405707477),
-    float3(-2.8769733643574344, 3.9652268864187157, 0.20412414523193154)
-};
 """
 
 FOOTER = """\
@@ -128,6 +151,88 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
 }
 """
 
+GHOSTTY = """\
+// Tux Ninja — neon text glow for Ghostty.
+// GENERATED by generate-glow.py from glow-colors.toml — do not edit by hand;
+// edit glow-colors.toml and re-run the generator instead. (Ghostty has no
+// pipeline vars, so tuning the constants below directly is also fine —
+// reload the config afterwards to re-read the shader.)
+//
+// Port of the Kitty slang shader. One color-agnostic glow: any pixel
+// perceptually distinct from the background glows in its own color, scaled
+// by its saturation, so saturated accents bloom while white and pink text
+// keeps only a faint halo. Ghostty serves the terminal texture in display
+// (sRGB) space, which is already gamma-2-ish, so perceptual distance and
+// saturation are computed directly on the sampled values — no sqrt
+// transform needed, which makes this a little cheaper than the Kitty one.
+
+// --- from glow-colors.toml [settings] ---
+const float GLOW_STRENGTH = {strength:.4f};
+const float GLOW_RADIUS = {radius:.4f};
+const float WHITE_SUPPRESSION = {white_suppression:.4f};
+const float CHROMA_GAIN = {chroma_gain:.4f};
+
+// A tap counts as pure background below PRESENT_NEAR and as full content
+// above PRESENT_FAR (perceptual distance, sRGB space, luma weighted).
+const float PRESENT_NEAR = 0.0700;
+const float PRESENT_FAR = 0.2500;
+
+// Rec.709 luma weights
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+{samples}
+// --- Implementation ---
+
+// How much of this tap is content rather than background. Antialiased glyph
+// pixels are blends between background and text color, so the distance — and
+// the glow with it — ramps smoothly along the blend.
+float present_amount(vec3 p, vec3 bg) {{
+    vec3 d = p - bg;
+    float dist = sqrt(dot(d * d, LUMA));
+    return smoothstep(PRESENT_NEAR, PRESENT_FAR, dist);
+}}
+
+// How saturated (colorful, independent of brightness) this tap is: distance
+// from the gray axis. ~0 for white/gray, ~1 for neon.
+float saturation_amount(vec3 p) {{
+    float l = dot(p, LUMA);
+    return clamp(length(p - l) * CHROMA_GAIN, 0.0, 1.0);
+}}
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {{
+    vec2 res = iResolution.xy;
+    vec2 uv = fragCoord / res;
+
+    // One pixel in texture UV space
+    vec2 base = 1.414 / res;
+    vec3 bg = iBackgroundColor;
+
+    vec4 result = texture(iChannel0, uv);
+
+    for (int i = 0; i < 24; i++) {{
+        vec3 s = SAMPLES[i];
+        // single texture fetch per tap
+        vec2 off = s.xy * base;
+        float dist2 = dot(off, off);
+        vec4 sc = texture(iChannel0, uv + off);
+
+        // background taps contribute nothing
+        float present = present_amount(sc.rgb, bg);
+        if (present <= 0.0) {{ continue; }}
+
+        // white/pink protection: unsaturated pixels glow only faintly
+        float sat = saturation_amount(sc.rgb);
+        float amount = present * (1.0 - WHITE_SUPPRESSION * (1.0 - sat));
+
+        // radial falloff from the center pixel
+        float w = 1.0 / (1.0 + 2.0 * dist2 / (GLOW_RADIUS * GLOW_RADIUS));
+
+        result += sc * (GLOW_STRENGTH * s.z * amount * w);
+    }}
+
+    fragColor = result;
+}}
+"""
+
 
 def main() -> None:
     ap = argparse.ArgumentParser()
@@ -163,7 +268,7 @@ def main() -> None:
     parts.append(f"static const float WHITE_SUPPRESSION = {white_suppression:.4f}f;")
     parts.append(f"static const float CHROMA_GAIN = {chroma_gain:.4f}f;")
     parts.append(RAMP)
-    parts.append(SAMPLES)
+    parts.append(samples_slang())
     parts.append(FOOTER)
     (args.output_dir / "tux-glow.slang").write_text("\n".join(parts))
 
@@ -183,7 +288,16 @@ def main() -> None:
     ]
     (args.output_dir / "tux-glow.pipeline").write_text("\n".join(pipe) + "\n")
 
-    print(f"wrote {args.output_dir}/tux-glow.slang and tux-glow.pipeline")
+    glsl = GHOSTTY.format(
+        strength=strength,
+        radius=radius,
+        white_suppression=white_suppression,
+        chroma_gain=chroma_gain,
+        samples=samples_glsl(),
+    )
+    (args.output_dir / "tux-glow.glsl").write_text(glsl)
+
+    print(f"wrote {args.output_dir}/tux-glow.slang, tux-glow.pipeline and tux-glow.glsl")
     print(f"  strength={strength} radius={radius} "
           f"white_suppression={white_suppression} chroma_gain={chroma_gain}")
 
