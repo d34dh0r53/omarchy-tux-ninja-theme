@@ -81,12 +81,13 @@ cp ~/.config/omarchy/themes/tux-ninja/kitty/shaders/tux-glow.glsl ~/.config/ghos
 printf '\ncustom-shader = ~/.config/ghostty/shaders/tux-glow.glsl\ncustom-shader-animation = false\n' >> ~/.config/ghostty/config
 ```
 
-Reload with `omarchy restart terminal` (or restart Ghostty). Ghostty
-serves the terminal texture in display (sRGB) space, which is already
-gamma-2-ish, so the port needs no sqrt transform and runs a little cheaper
-than the Kitty one. Ghostty has no pipeline vars — tune the constants at
-the top of the `tux-glow.glsl` directly, or edit `glow-colors.toml` and
-regenerate with `python3 generate-glow.py`.
+Reload with `omarchy restart terminal` (or restart Ghostty). Ghostty's
+custom-shader pipeline is linear end-to-end like Kitty's — the texture is
+linear, matching happens in gamma-2 space, and the surface sRGB-encodes
+the output — so the two terminals render the glow the same way. Ghostty
+has no pipeline vars — tune the constants at the top of the `tux-glow.glsl`
+directly, or edit `glow-colors.toml` and regenerate with
+`python3 generate-glow.py`.
 
 To glow the outside of every window on the desktop, add a magenta Hyprland
 shadow with zero offset to `~/.config/hypr/` (e.g. in `looknfeel.lua`):
@@ -107,5 +108,5 @@ hl.config({
 
 ## License
 
-Wallpaper is the original `tux-ninja-4k-3840x2160.jpg` this theme was built
-around; theme files are provided as-is for personal use.
+The wallpaper in `backgrounds/` is the original 4K tux-ninja artwork this
+theme was built around; theme files are provided as-is for personal use.
