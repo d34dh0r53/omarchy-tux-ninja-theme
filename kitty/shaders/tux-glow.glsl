@@ -7,10 +7,14 @@
 // Port of the Kitty slang shader. One color-agnostic glow: any pixel
 // perceptually distinct from the background glows in its own color, scaled
 // by its saturation, so saturated accents bloom while white and pink text
-// keeps only a faint halo. Ghostty serves the terminal texture in display
-// (sRGB) space, which is already gamma-2-ish, so perceptual distance and
-// saturation are computed directly on the sampled values — no sqrt
-// transform needed, which makes this a little cheaper than the Kitty one.
+// keeps only a faint halo.
+//
+// Color spaces (verified by probing): Ghostty's iChannel0 texture is
+// LINEAR, iBackgroundColor arrives as sRGB (which is itself the gamma-2
+// view of its linear value — exactly the space the perceptual matching
+// wants), and the display surface sRGB-encodes the shader output. So this
+// works in linear end-to-end exactly like Kitty: sqrt the texture for
+// matching, accumulate the glow in linear, return raw linear.
 
 // --- from glow-colors.toml [settings] ---
 const float GLOW_STRENGTH = 0.0800;
@@ -27,13 +31,13 @@ const float PRESENT_FAR = 0.2500;
 // Rec.709 luma weights
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
-// Tap reach compensation: Ghostty renders into its own scaled render
-// target (content scale), which the compositor then resizes to the window.
-// The tap offsets are in render-target pixels, so on setups where the
-// render target is finer than the screen (GTK fractional scaling on a 4K
-// TV: 2.18 vs 1.6) the halo comes out ~1.36x narrower than Kitty's.
-// Raise toward that ratio to match; 1.0 = no compensation.
-const float TAP_SCALE = 1.36;
+// Tap reach compensation. Kitty's shader divides its pixel step by the
+// LOGICAL viewport while sampling the PHYSICAL framebuffer, accidentally
+// stretching its taps to ~1.6x — its halo actually reaches ~10px, not the
+// ~6px the spiral implies. Ghostty renders into its own scaled render
+// target, so matching Kitty's real reach needs TAP_SCALE ≈ the content
+// scale (2.2 here: a 4K TV at 1.6 display scale). 1.0 = no compensation.
+const float TAP_SCALE = 2.2;
 
 // Golden spiral sample pattern [x, y, weight] — weight is inverse of distance
 const vec3 SAMPLES[24] = vec3[24](
@@ -85,7 +89,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 res = iResolution.xy;
     vec2 uv = fragCoord / res;
 
-    // One screen pixel in texture UV space, TAP_SCALE-compensated
+    // One pixel step in texture UV space, TAP_SCALE-compensated
     vec2 base = (1.414 * TAP_SCALE) / res;
     vec3 bg = iBackgroundColor;
 
@@ -101,35 +105,35 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float dist2 = dot(off, off);
         vec4 sc = texture(iChannel0, uv + off);
 
+        // perceptual matching in gamma-2 space, exactly like Kitty
+        vec3 p = sqrt(sc.rgb);
+
         // background taps contribute nothing
-        float present = present_amount(sc.rgb, bg);
+        float present = present_amount(p, bg);
         density += present * s.z;
         if (present <= 0.0) { continue; }
 
         // white/pink protection: unsaturated pixels glow only faintly
-        float sat = saturation_amount(sc.rgb);
+        float sat = saturation_amount(p);
         float amount = present * (1.0 - WHITE_SUPPRESSION * (1.0 - sat));
 
         // radial falloff from the center pixel
         float w = 1.0 / (1.0 + 2.0 * dist2 / (GLOW_RADIUS * GLOW_RADIUS));
 
         float k = GLOW_STRENGTH * s.z * amount * w;
-        // composite in linear space like Kitty does: square the sRGB samples
-        // (gamma-2 approx), accumulate, re-encode at the end. Adding in linear
-        // and then encoding lands the glow much harder in the darks — that is
-        // where the halo lives, and what makes the Kitty version pop.
-        glow += (sc.rgb * sc.rgb) * k;
+        glow += sc.rgb * k;
         glow_a += sc.a * k;
     }
 
-    vec3 lin = center.rgb * center.rgb;
-    // bright, saturated, DENSE content self-boosts: the gather-gated
-    // core punch Kitty gets for free from its linear composite. Solid
-    // blocks collect from all taps, thin glyph strokes only from a few —
-    // so neon blocks punch hard while thin white text stays crisp.
-    float sat_c = saturation_amount(center.rgb);
+    // Everything below is linear; the display surface sRGB-encodes it.
+    // Gather-gated core punch: solid saturated blocks collect from all
+    // taps and punch toward blown-out neon; thin glyph strokes only catch
+    // a few and stay crisp — matching how Kitty's glow reads.
+    vec3 lin = center.rgb;
+    float sat_c = saturation_amount(sqrt(center.rgb));
+    float core = smoothstep(0.80, 0.98, sat_c);
     float gather = density / 8.4386;  // sum of the spiral weights
-    lin *= 1.0 + TEXT_BOOST * sat_c * sat_c * sat_c * gather;
+    lin *= 1.0 + TEXT_BOOST * core * gather;
     lin += glow;
-    fragColor = vec4(sqrt(lin), center.a + glow_a);
+    fragColor = vec4(lin, center.a + glow_a);
 }
