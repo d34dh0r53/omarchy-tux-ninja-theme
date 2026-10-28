@@ -6,7 +6,7 @@ midnight-navy / violet / hot-magenta palette with a Tux ninja wallpaper.
 ## Install
 
 ```bash
-omarchy theme install https://github.com/d34dh0r53/tux-ninja-theme.git
+omarchy theme install https://github.com/d34dh0r53/omarchy-tux-ninja-theme.git
 ```
 
 This clones the theme into `~/.config/omarchy/themes/tux-ninja` and applies it.
