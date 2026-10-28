@@ -5,8 +5,7 @@ startgroup
     # static effect: redraws only when content changes, no idle cost
     animation_step 0
     var float GLOW_STRENGTH = 0.0800
-    var float GLOW_RADIUS = 2.0000
     var float WHITE_SUPPRESSION = 0.8500
-    var float CHROMA_GAIN = 4.0000
+    var float CHROMA_GAIN = 3.2000
     shaders tux-glow
 endgroup

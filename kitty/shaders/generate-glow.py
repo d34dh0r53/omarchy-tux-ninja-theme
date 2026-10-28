@@ -107,11 +107,11 @@ float present_amount(float3 p, float3 bg) {
     return smoothstep(PRESENT_NEAR, PRESENT_FAR, dist);
 }
 
-// How saturated (colorful, independent of brightness) this tap is: distance
-// from the gray axis in gamma-2 space. ~0 for white/gray, ~1 for neon.
+// How saturated (colorful, independent of brightness) this tap is:
+// max-min chroma — hue-blind like distance-from-gray, but sqrt-free.
+// ~0 for white/gray, ~1 for neon.
 float saturation_amount(float3 p) {
-    float l = dot(p, LUMA);
-    return clamp(length(p - l) * CHROMA_GAIN, 0.0f, 1.0f);
+    return clamp((max(max(p.x, p.y), p.z) - min(min(p.x, p.y), p.z)) * CHROMA_GAIN, 0.0f, 1.0f);
 }
 
 public float4
@@ -127,9 +127,10 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     [ForceUnroll]
     for (int i = 0; i < 24; i++) {
         float3 s = samples[i];
-        // single texture fetch per tap
+        // single texture fetch per tap; the spiral weights themselves carry
+        // the distance falloff (the old radius knob compared UV units against
+        // pixels and was always ~1.0 — dead weight, removed)
         float2 off = s.xy * base;
-        float dist2 = dot(off, off);
         float4 sc = t.backbuffer.Sample(uv + off);
 
         // background taps contribute nothing
@@ -141,10 +142,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
         float sat = saturation_amount(p);
         float amount = present * (1.0f - WHITE_SUPPRESSION * (1.0f - sat));
 
-        // radial falloff from the center pixel
-        float w = 1.0f / (1.0f + 2.0f * dist2 / (GLOW_RADIUS * GLOW_RADIUS));
-
-        result += sc * (GLOW_STRENGTH * s.z * amount * w);
+        result += sc * (GLOW_STRENGTH * s.z * amount);
     }
 
     return result;
@@ -172,7 +170,6 @@ GHOSTTY = """\
 
 // --- from glow-colors.toml [settings] ---
 const float GLOW_STRENGTH = {strength:.4f};
-const float GLOW_RADIUS = {radius:.4f};
 const float WHITE_SUPPRESSION = {white_suppression:.4f};
 const float CHROMA_GAIN = {chroma_gain:.4f};
 const float TEXT_BOOST = {text_boost:.4f};
@@ -204,11 +201,11 @@ float present_amount(vec3 p, vec3 bg) {{
     return smoothstep(PRESENT_NEAR, PRESENT_FAR, dist);
 }}
 
-// How saturated (colorful, independent of brightness) this tap is: distance
-// from the gray axis. ~0 for white/gray, ~1 for neon.
+// How saturated (colorful, independent of brightness) this tap is:
+// max-min chroma — hue-blind like distance-from-gray, but sqrt-free.
+// ~0 for white/gray, ~1 for neon.
 float saturation_amount(vec3 p) {{
-    float l = dot(p, LUMA);
-    return clamp(length(p - l) * CHROMA_GAIN, 0.0, 1.0);
+    return clamp((max(max(p.x, p.y), p.z) - min(min(p.x, p.y), p.z)) * CHROMA_GAIN, 0.0, 1.0);
 }}
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {{
@@ -226,9 +223,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {{
 
     for (int i = 0; i < 24; i++) {{
         vec3 s = SAMPLES[i];
-        // single texture fetch per tap
+        // single texture fetch per tap; the spiral weights carry the
+        // distance falloff (the old radius knob compared UV units against
+        // pixels and was always ~1.0 — dead weight, removed)
         vec2 off = s.xy * base;
-        float dist2 = dot(off, off);
         vec4 sc = texture(iChannel0, uv + off);
 
         // perceptual matching in gamma-2 space, exactly like Kitty
@@ -243,10 +241,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {{
         float sat = saturation_amount(p);
         float amount = present * (1.0 - WHITE_SUPPRESSION * (1.0 - sat));
 
-        // radial falloff from the center pixel
-        float w = 1.0 / (1.0 + 2.0 * dist2 / (GLOW_RADIUS * GLOW_RADIUS));
-
-        float k = GLOW_STRENGTH * s.z * amount * w;
+        float k = GLOW_STRENGTH * s.z * amount;
         glow += sc.rgb * k;
         glow_a += sc.a * k;
     }}
@@ -284,20 +279,18 @@ def main() -> None:
 
     settings = cfg.get("settings", {})
     strength = float(settings.get("strength", 0.08))
-    radius = float(settings.get("radius", 2.0))
     white_suppression = float(settings.get("white_suppression", 0.85))
     chroma_gain = float(settings.get("chroma_gain", 4.0))
     text_boost = float(settings.get("text_boost", 0.5))
 
-    if strength < 0 or radius <= 0 or not 0 <= white_suppression <= 1 or chroma_gain <= 0 or text_boost < 0:
+    if strength < 0 or not 0 <= white_suppression <= 1 or chroma_gain <= 0 or text_boost < 0:
         raise SystemExit(
-            "invalid settings: need strength >= 0, radius > 0, "
+            "invalid settings: need strength >= 0, "
             "0 <= white_suppression <= 1, chroma_gain > 0, text_boost >= 0"
         )
 
     parts = [HEADER]
     parts.append(f"static const float GLOW_STRENGTH = {strength:.4f}f;")
-    parts.append(f"static const float GLOW_RADIUS = {radius:.4f}f;")
     parts.append(f"static const float WHITE_SUPPRESSION = {white_suppression:.4f}f;")
     parts.append(f"static const float CHROMA_GAIN = {chroma_gain:.4f}f;")
     parts.append(RAMP)
@@ -313,7 +306,6 @@ def main() -> None:
         "    # static effect: redraws only when content changes, no idle cost",
         "    animation_step 0",
         f"    var float GLOW_STRENGTH = {strength:.4f}",
-        f"    var float GLOW_RADIUS = {radius:.4f}",
         f"    var float WHITE_SUPPRESSION = {white_suppression:.4f}",
         f"    var float CHROMA_GAIN = {chroma_gain:.4f}",
         "    shaders tux-glow",
@@ -323,7 +315,6 @@ def main() -> None:
 
     glsl = GHOSTTY.format(
         strength=strength,
-        radius=radius,
         white_suppression=white_suppression,
         chroma_gain=chroma_gain,
         text_boost=text_boost,
@@ -332,7 +323,7 @@ def main() -> None:
     (args.output_dir / "tux-glow.glsl").write_text(glsl)
 
     print(f"wrote {args.output_dir}/tux-glow.slang, tux-glow.pipeline and tux-glow.glsl")
-    print(f"  strength={strength} radius={radius} "
+    print(f"  strength={strength} "
           f"white_suppression={white_suppression} chroma_gain={chroma_gain} "
           f"text_boost={text_boost}")
 

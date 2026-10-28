@@ -15,9 +15,8 @@ import kitty_custom_shader_types;
 // --- from glow-colors.toml [settings] — tunable via pipeline vars ---
 
 static const float GLOW_STRENGTH = 0.0800f;
-static const float GLOW_RADIUS = 2.0000f;
 static const float WHITE_SUPPRESSION = 0.8500f;
-static const float CHROMA_GAIN = 4.0000f;
+static const float CHROMA_GAIN = 3.2000f;
 // A tap counts as pure background below PRESENT_NEAR and as full content
 // above PRESENT_FAR (perceptual distance, gamma-2 space, luma weighted).
 static const float PRESENT_NEAR = 0.0700f;
@@ -66,11 +65,11 @@ float present_amount(float3 p, float3 bg) {
     return smoothstep(PRESENT_NEAR, PRESENT_FAR, dist);
 }
 
-// How saturated (colorful, independent of brightness) this tap is: distance
-// from the gray axis in gamma-2 space. ~0 for white/gray, ~1 for neon.
+// How saturated (colorful, independent of brightness) this tap is:
+// max-min chroma — hue-blind like distance-from-gray, but sqrt-free.
+// ~0 for white/gray, ~1 for neon.
 float saturation_amount(float3 p) {
-    float l = dot(p, LUMA);
-    return clamp(length(p - l) * CHROMA_GAIN, 0.0f, 1.0f);
+    return clamp((max(max(p.x, p.y), p.z) - min(min(p.x, p.y), p.z)) * CHROMA_GAIN, 0.0f, 1.0f);
 }
 
 public float4
@@ -86,9 +85,10 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     [ForceUnroll]
     for (int i = 0; i < 24; i++) {
         float3 s = samples[i];
-        // single texture fetch per tap
+        // single texture fetch per tap; the spiral weights themselves carry
+        // the distance falloff (the old radius knob compared UV units against
+        // pixels and was always ~1.0 — dead weight, removed)
         float2 off = s.xy * base;
-        float dist2 = dot(off, off);
         float4 sc = t.backbuffer.Sample(uv + off);
 
         // background taps contribute nothing
@@ -100,10 +100,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
         float sat = saturation_amount(p);
         float amount = present * (1.0f - WHITE_SUPPRESSION * (1.0f - sat));
 
-        // radial falloff from the center pixel
-        float w = 1.0f / (1.0f + 2.0f * dist2 / (GLOW_RADIUS * GLOW_RADIUS));
-
-        result += sc * (GLOW_STRENGTH * s.z * amount * w);
+        result += sc * (GLOW_STRENGTH * s.z * amount);
     }
 
     return result;

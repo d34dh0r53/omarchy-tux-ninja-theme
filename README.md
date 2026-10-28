@@ -51,9 +51,8 @@ The glow is configured in `glow-colors.toml`:
 ```toml
 [settings]
 strength = 0.08          # overall glow intensity
-radius = 2.0             # halo spread, ~1 tight … ~2.2 wide soft neon
 white_suppression = 0.85 # 0 = whites glow equally, 1 = whites never glow
-chroma_gain = 4.0        # how fast saturation earns the full glow
+chroma_gain = 3.2        # how fast saturation earns the full glow
 ```
 
 After editing it, regenerate and reload:
@@ -65,7 +64,10 @@ python3 ~/.config/kitty/shaders/generate-glow.py
 Fine-tuning without regenerating is also possible directly in
 `~/.config/kitty/shaders/tux-glow.pipeline` (the generator bakes the TOML
 values there as `var` overrides). The effect is static (`animation_step 0`),
-so it only redraws when terminal content changes — no idle CPU cost.
+so it only redraws when terminal content changes — no idle CPU cost. The
+halo's distance falloff comes from the spiral's own weights — there is no
+radius knob (the old one compared UV units against pixels and never did
+anything).
 
 ### Ghostty
 

@@ -18,9 +18,8 @@
 
 // --- from glow-colors.toml [settings] ---
 const float GLOW_STRENGTH = 0.0800;
-const float GLOW_RADIUS = 2.0000;
 const float WHITE_SUPPRESSION = 0.8500;
-const float CHROMA_GAIN = 4.0000;
+const float CHROMA_GAIN = 3.2000;
 const float TEXT_BOOST = 4.0000;
 
 // A tap counts as pure background below PRESENT_NEAR and as full content
@@ -78,11 +77,11 @@ float present_amount(vec3 p, vec3 bg) {
     return smoothstep(PRESENT_NEAR, PRESENT_FAR, dist);
 }
 
-// How saturated (colorful, independent of brightness) this tap is: distance
-// from the gray axis. ~0 for white/gray, ~1 for neon.
+// How saturated (colorful, independent of brightness) this tap is:
+// max-min chroma — hue-blind like distance-from-gray, but sqrt-free.
+// ~0 for white/gray, ~1 for neon.
 float saturation_amount(vec3 p) {
-    float l = dot(p, LUMA);
-    return clamp(length(p - l) * CHROMA_GAIN, 0.0, 1.0);
+    return clamp((max(max(p.x, p.y), p.z) - min(min(p.x, p.y), p.z)) * CHROMA_GAIN, 0.0, 1.0);
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
@@ -100,9 +99,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     for (int i = 0; i < 24; i++) {
         vec3 s = SAMPLES[i];
-        // single texture fetch per tap
+        // single texture fetch per tap; the spiral weights carry the
+        // distance falloff (the old radius knob compared UV units against
+        // pixels and was always ~1.0 — dead weight, removed)
         vec2 off = s.xy * base;
-        float dist2 = dot(off, off);
         vec4 sc = texture(iChannel0, uv + off);
 
         // perceptual matching in gamma-2 space, exactly like Kitty
@@ -117,10 +117,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float sat = saturation_amount(p);
         float amount = present * (1.0 - WHITE_SUPPRESSION * (1.0 - sat));
 
-        // radial falloff from the center pixel
-        float w = 1.0 / (1.0 + 2.0 * dist2 / (GLOW_RADIUS * GLOW_RADIUS));
-
-        float k = GLOW_STRENGTH * s.z * amount * w;
+        float k = GLOW_STRENGTH * s.z * amount;
         glow += sc.rgb * k;
         glow_a += sc.a * k;
     }
