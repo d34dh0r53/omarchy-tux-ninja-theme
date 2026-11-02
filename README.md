@@ -23,8 +23,10 @@ omarchy theme set tux-ninja
 - `backgrounds/1-tux-ninja.jpg` — 4K wallpaper
 - `icons.theme` — Yaru purple-dark icon set
 - `preview.png` — theme preview thumbnail
-- `kitty/tux-ninja.conf` — kitty color theme, apply with
-  `kitten themes tux-ninja` (copy to `~/.config/kitty/themes/`)
+- `kitty/tux-ninja.conf` — reference copy of the kitty colors Omarchy generates
+  from `colors.toml` (don't install it via `kitten themes` — that creates a
+  stale `current-theme.conf` in `~/.config/kitty/` that overrides Omarchy's
+  generated colors when the theme changes)
 - `kitty/shaders/` — optional neon text-glow shader for kitty (see below)
 
 ## Neon glow
