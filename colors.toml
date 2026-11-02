@@ -1,33 +1,38 @@
 mode = "dark"
 
-accent = "#BC50A0"
-selection = "#2A2E4E"
-muted = "#6E7597"
+# Palette supplied by user (palette-generator output):
+#   Primary:     cyan scale    AAF4F4 / 75E7E7 / 4CD8D8 / 18BABA / 008484
+#   Secondary 1: violet scale  D4B1F6 / B67FEB / 9D59E0 / 7826C7 / 500895
+#   Secondary 2: yellow scale  FFFBB2 / FFF881 / FFF659 / FFF321 / DDD000
+#   Complement:  orange scale  FFD5B2 / FFBA81 / FFA459 / FF8621 / DD6400
+accent = "#75E7E7"
+selection = "#1E5A5A"
+muted = "#7BB0B0"
 
 background = "#101223"
 dark_background = "#0C0E1C"
 darker_background = "#080913"
-lighter_background = "#1A1D33"
+lighter_background = "#1A2833"
 
-foreground = "#E4E9F8"
-dark_foreground = "#6E7597"
-light_foreground = "#B9C3DE"
-bright_foreground = "#E4E9F8"
+foreground = "#E8F4F8"
+dark_foreground = "#7BB0B0"
+light_foreground = "#BED4DE"
+bright_foreground = "#E8F4F8"
 
-hyprland_active_border = "rgba(bc50a0ee) rgba(485d92ee) 45deg"
+hyprland_active_border = "rgba(4cd8d8ee) rgba(b67febee) 45deg"
 
-red = "#C95D93"
-yellow = "#9182C7"
-orange = "#A86FA8"
-green = "#915582"
-cyan = "#485D92"
-blue = "#91A0C7"
-magenta = "#A42F61"
-brown = "#5B2458"
+red = "#DD6400"
+yellow = "#DDD000"
+orange = "#FF8621"
+green = "#008484"
+cyan = "#4CD8D8"
+blue = "#18BABA"
+magenta = "#7826C7"
+brown = "#9D59E0"
 
-bright_red = "#E58CB8"
-bright_yellow = "#B4ACDE"
-bright_green = "#B082A6"
-bright_cyan = "#91A0C7"
-bright_blue = "#C7D2E8"
-bright_magenta = "#E06FB6"
+bright_red = "#FFA459"
+bright_yellow = "#FFF659"
+bright_green = "#18BABA"
+bright_cyan = "#AAF4F4"
+bright_blue = "#75E7E7"
+bright_magenta = "#B67FEB"

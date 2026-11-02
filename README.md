@@ -1,7 +1,7 @@
 # Tux Ninja — an Omarchy theme
 
 A dark synthwave theme for [Omarchy](https://omarchy.org/), built around a
-midnight-navy / violet / hot-magenta palette with a Tux ninja wallpaper.
+midnight-navy / cyan / violet palette with a Tux ninja wallpaper.
 
 ## Install
 
